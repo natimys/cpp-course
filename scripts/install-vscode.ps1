@@ -1,3 +1,5 @@
+# VS Code + C/C++ configuration for natimys/cpp-course
+# Run with Windows PowerShell 5.1 or PowerShell 7 (no admin rights required for user installs).
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
@@ -92,36 +94,4 @@ try {
     Write-Host '[1/3] Checking VS Code...'
     $code = Get-VSCodeCli
     if (-not $code) {
-        Write-Host 'VS Code not found. Installing via winget (user scope)...'
-        if (-not (Get-Command winget.exe -ErrorAction SilentlyContinue)) {
-            throw 'winget is not installed. Install VS Code from https://code.visualstudio.com/ and rerun.'
-        }
-        & winget.exe install --id Microsoft.VisualStudioCode --exact --source winget --scope user --silent --accept-package-agreements --accept-source-agreements
-        if ($LASTEXITCODE -ne 0) { throw "VS Code install failed (winget exit code: $LASTEXITCODE)." }
-        $code = Get-VSCodeCli
-        if (-not $code) { throw 'VS Code installed but code.cmd was not found. Restart PowerShell and run this script again.' }
-    }
-    Write-Host "VS Code CLI: $code" -ForegroundColor Green
-
-    Write-Host '[2/3] Installing C/C++ extension...'
-    & $code --install-extension $extensionId
-    if ($LASTEXITCODE -ne 0) { throw "Extension installation failed (exit code: $LASTEXITCODE)." }
-
-    Write-Host '[3/3] Checking C++ compiler...'
-    $compiler = Get-Compiler
-    if (-not $compiler) {
-        $answer = Read-Host 'G++ not found. Download and install WinLibs now? [Y/n]'
-        if (($answer -eq '') -or ($answer -match '^(?i:y|yes|д|да)$')) {
-            $downloadedScript = Join-Path $env:TEMP ('cpp-course-install-mingw-' + [guid]::NewGuid().ToString('N') + '.ps1')
-            try {
-                Invoke-WebRequest -Uri $compilerInstallerUrl -OutFile $downloadedScript -UseBasicParsing
-                $psExe = Join-Path $PSHOME 'powershell.exe'
-                if (-not (Test-Path $psExe)) { $psExe = (Get-Process -Id $PID).Path }
-                & $psExe -NoProfile -ExecutionPolicy Bypass -File $downloadedScript
-                if ($LASTEXITCODE -ne 0) { throw "Compiler installer failed (exit code: $LASTEXITCODE)." }
-            } finally {
-                Remove-Item -LiteralPath $downloadedScript -Force -ErrorAction SilentlyContinue
-            }
-            $compiler = Get-Compiler
-            if (-not $compiler) { throw 'Compiler installer finished, but g++.exe was not found.' }
 
