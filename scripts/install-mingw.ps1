@@ -39,37 +39,17 @@ try {
     if (Test-Compiler $compilerDir) {
         Write-Host 'WinLibs already installed; skipping download.' -ForegroundColor Green
     } else {
-        Write-Host '[2/4] Finding latest WinLibs GCC (UCRT, POSIX, x86_64) release...'
+        Write-Host '[2/4] Selecting WinLibs GCC 16.2.0 (x64, UCRT, POSIX)...'
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        $headers = @{ 'User-Agent' = 'cpp-course-winlibs-installer'; 'Accept' = 'application/vnd.github+json' }
-        $asset = $null
-        $releaseLabel = ''
-        for ($page = 1; $page -le 5 -and -not $asset; $page++) {
-            $api = "https://api.github.com/repos/brechtsanders/winlibs_mingw/releases?per_page=30&page=$page"
-            $releases = @(Invoke-RestMethod -Uri $api -Headers $headers -TimeoutSec 45)
-            foreach ($release in $releases) {
-                if ($release.draft -or $release.prerelease) { continue }
-                $candidates = @($release.assets | Where-Object {
-                    $_.name -match '^winlibs-x86_64-posix-seh-gcc-.*mingw-w64ucrt-.*\.zip$' -and
-                    $_.name -notmatch 'llvm|clang'
-                })
-                if ($candidates.Count -gt 0) {
-                    $asset = $candidates[0]
-                    $releaseLabel = $release.tag_name
-                    break
-                }
-            }
-            if ($releases.Count -lt 30) { break }
-        }
-        if (-not $asset) {
-            throw 'No suitable WinLibs ZIP found in recent GitHub releases. Check https://winlibs.com/.'
-        }
-        Write-Host "Selected release: $releaseLabel"
-        Write-Host "Archive: $($asset.name)"
+        # Pinned GCC-only archive published by the WinLibs project.
+        # Avoid GitHub Releases API enumeration and naming-pattern changes.
+        $archiveName = 'winlibs-x86_64-posix-seh-gcc-16.2.0-mingw-w64ucrt-14.0.0-r3.zip'
+        $downloadUrl = 'https://github.com/brechtsanders/winlibs_mingw/releases/download/16.2.0posix-23.1.3-14.0.0-ucrt-r3/' + $archiveName
+        Write-Host "Archive: $archiveName"
         New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
         $zip = Join-Path $tempDir 'winlibs.zip'
         Write-Host '[3/4] Downloading and unpacking WinLibs (this archive can be large)...'
-        Invoke-WebRequest -Uri $asset.browser_download_url -Headers $headers -OutFile $zip -TimeoutSec 1800
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $zip -UseBasicParsing -TimeoutSec 1800
         $extractDir = Join-Path $tempDir 'extracted'
         New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
         Expand-Archive -LiteralPath $zip -DestinationPath $extractDir -Force
