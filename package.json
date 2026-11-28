@@ -1,0 +1,16 @@
+{
+  "name": "cpp-course",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "astro": "7.4.13",
+    "@astrojs/starlight": "0.43.2",
+    "@astrojs/markdown-remark": "7.3.0"
+  }
+}
