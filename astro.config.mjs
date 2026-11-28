@@ -6,12 +6,14 @@ export default defineConfig({
   base: '/cpp-course',
   integrations: [starlight({
     title: 'Курс C++',
+    components: { MarkdownContent: './src/components/CompilerLayout.astro' },
     defaultLocale: 'ru',
     locales: { root: { label: 'Русский', lang: 'ru' } },
     sidebar: [
       { label: 'Начало', items: [
         { label: 'Начало', slug: 'index' },
         { label: 'Установка', slug: 'installation' },
+        { label: 'Компилятор C++', slug: 'compiler' },
       ] },
       { label: 'Основы. Часть 1', items: [
         { label: 'Переменные и типы данных', slug: 'variables' },

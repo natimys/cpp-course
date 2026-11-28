@@ -1,0 +1,21 @@
+---
+import Default from '@astrojs/starlight/components/MarkdownContent.astro';
+import Compiler from './Compiler.astro';
+
+const route = Astro.locals.starlightRoute;
+const page = route?.entry?.id ?? route?.id ?? '';
+const showCompiler = page === 'index' || page === '';
+---
+
+<Default>
+  <slot />
+  {showCompiler && (
+    <>
+      <hr />
+      <h2>Попробуй сам: компилятор в браузере</h2>
+      <p>Напиши первую программу прямо здесь: для этого не нужно устанавливать компилятор. Исходный код остаётся в браузере.</p>
+      <Compiler />
+      <p>Для полноценной разработки установи инструменты по инструкции <a href="/cpp-course/installation/">в разделе «Установка»</a>. Подробнее о возможностях песочницы — <a href="/cpp-course/compiler/">на странице компилятора</a>.</p>
+    </>
+  )}
+</Default>

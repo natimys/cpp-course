@@ -1,0 +1,158 @@
+---
+---
+
+<section class="compiler" aria-labelledby="compiler-title">
+  <div class="intro">
+    <div>
+      <p class="eyebrow">Песочница в браузере</p>
+      <h2 id="compiler-title">Попробуй сам</h2>
+      <p>Код компилируется и запускается прямо у тебя в браузере. Сервер курса его не получает.</p>
+    </div>
+    <span class="standard">C++20 · Clang · WebAssembly</span>
+  </div>
+
+  <div class="toolbar">
+    <button class="run" type="button">Скомпилировать и запустить</button>
+    <button class="stop" type="button" disabled>Остановить</button>
+    <span class="status" role="status" aria-live="polite">Готово к запуску</span>
+  </div>
+
+  <label for="cpp-source">Код программы</label>
+  <textarea id="cpp-source" class="source" spellcheck="false" autocapitalize="off" autocomplete="off">#include &lt;iostream&gt;
+#include &lt;string&gt;
+
+int main() &#123;
+    std::string name;
+    std::cout &lt;&lt; "Как тебя зовут? ";
+    std::getline(std::cin, name);
+    std::cout &lt;&lt; "Привет, " &lt;&lt; name &lt;&lt; "!\n";
+&#125;</textarea>
+
+  <label for="cpp-stdin">Ввод программы (stdin)</label>
+  <textarea id="cpp-stdin" class="stdin" spellcheck="false">Сергей</textarea>
+
+  <div class="output-heading">
+    <label for="cpp-output">Вывод и сообщения компилятора</label>
+    <span>Предел выполнения программы — 10 секунд</span>
+  </div>
+  <pre id="cpp-output" class="output" aria-live="polite" tabindex="0"></pre>
+  <p class="note">При первом запуске браузер скачает Clang (~23 МБ); потом файлы останутся в его кэше. Ввод программы задаётся заранее в поле stdin — интерактивный ввод во время выполнения пока не поддерживается.</p>
+</section>
+
+<script>
+  const TIME_LIMIT_MS = 10_000;
+  const workerUrl = `${import.meta.env.BASE_URL}/cpp-compiler/clang-worker.mjs`;
+  const source = document.querySelector('#cpp-source');
+  const stdin = document.querySelector('#cpp-stdin');
+  const output = document.querySelector('#cpp-output');
+  const runButton = document.querySelector('.compiler .run');
+  const stopButton = document.querySelector('.compiler .stop');
+  const status = document.querySelector('.compiler .status');
+  let worker;
+  let timer;
+
+  function setStatus(message, state) {
+    if (status) {
+      status.textContent = message;
+      status.dataset.state = state;
+    }
+  }
+
+  function finish(message) {
+    window.clearTimeout(timer);
+    timer = undefined;
+    worker?.terminate();
+    worker = undefined;
+    if (runButton) runButton.disabled = false;
+    if (stopButton) stopButton.disabled = true;
+    setStatus(message, 'done');
+  }
+
+  function appendOutput(stream, text) {
+    if (!output) return;
+    const span = document.createElement('span');
+    span.className = `stream-${stream}`;
+    span.textContent = text;
+    output.append(span);
+    output.scrollTop = output.scrollHeight;
+  }
+
+  runButton?.addEventListener('click', () => {
+    if (!source || !stdin || !output) return;
+    output.replaceChildren();
+    runButton.disabled = true;
+    if (stopButton) stopButton.disabled = false;
+    setStatus('Подготовка компилятора…', 'busy');
+
+    try {
+      worker = new Worker(workerUrl, { type: 'module' });
+      worker.onmessage = ({ data }) => {
+        if (data.type === 'output') appendOutput(data.stream, data.text);
+        if (data.type === 'status') {
+          const messages = {
+            loading: 'Загрузка Clang…',
+            busy: 'Компиляция…',
+            ready: 'Программа выполняется…',
+          };
+          setStatus(messages[data.status] ?? 'Работа…', 'busy');
+          if (data.status === 'ready') {
+            timer = window.setTimeout(() => {
+              appendOutput('system', `\nОстановлено по тайм-ауту (${TIME_LIMIT_MS / 1000} секунд).\n`);
+              finish('Время выполнения истекло');
+            }, TIME_LIMIT_MS);
+          }
+        }
+        if (data.type === 'done') finish(`Готово · код завершения ${data.exitCode}`);
+      };
+      worker.onerror = (event) => {
+        appendOutput('stderr', `Ошибка запуска Web Worker: ${event.message}\n`);
+        finish('Не удалось запустить компилятор');
+      };
+      worker.postMessage({ type: 'run', language: 'cpp', code: source.value, stdin: stdin.value });
+    } catch (error) {
+      appendOutput('stderr', `${error instanceof Error ? error.message : String(error)}\n`);
+      finish('Не удалось запустить компилятор');
+    }
+  });
+
+  stopButton?.addEventListener('click', () => {
+    appendOutput('system', '\nВыполнение остановлено.\n');
+    finish('Остановлено');
+  });
+</script>
+
+<style>
+  .compiler {
+    --panel: var(--sl-color-gray-6, #f5f6f8);
+    --border: var(--sl-color-gray-5, #d7dbe2);
+    margin: 2rem 0;
+    padding: clamp(1rem, 3vw, 1.5rem);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    background: var(--sl-color-bg, #fff);
+    box-shadow: 0 12px 36px #0000000c;
+  }
+  .intro { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+  .eyebrow { margin: 0; color: var(--sl-color-accent, #6750a4); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  h2 { margin: .25rem 0; font-size: 1.5rem; }
+  .intro p:not(.eyebrow) { margin: .25rem 0 0; color: var(--sl-color-gray-2, #444); }
+  .standard { flex: none; padding: .4rem .65rem; border-radius: 999px; background: var(--panel); font-size: .78rem; font-weight: 650; }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin: 1.25rem 0 1rem; }
+  button { min-height: 2.6rem; padding: .55rem .9rem; border: 1px solid var(--border); border-radius: .55rem; background: var(--panel); color: var(--sl-color-text, inherit); font: inherit; font-weight: 650; cursor: pointer; }
+  button.run { border-color: var(--sl-color-accent, #6750a4); background: var(--sl-color-accent, #6750a4); color: var(--sl-color-accent-high, #fff); }
+  button:disabled { cursor: not-allowed; opacity: .55; }
+  .status { color: var(--sl-color-gray-2, #444); font-size: .9rem; }
+  .status[data-state='done'] { color: var(--sl-color-text, inherit); }
+  label { display: block; margin: .8rem 0 .35rem; font-size: .9rem; font-weight: 650; }
+  textarea, .output { box-sizing: border-box; width: 100%; border: 1px solid var(--border); border-radius: .6rem; background: var(--panel); color: var(--sl-color-text, #16181d); font: .88rem/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; }
+  textarea { display: block; padding: .8rem; resize: vertical; }
+  .source { min-height: 19rem; tab-size: 4; }
+  .stdin { min-height: 3.5rem; }
+  .output-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem; }
+  .output-heading span, .note { color: var(--sl-color-gray-2, #555); font-size: .8rem; }
+  .output { min-height: 8rem; max-height: 24rem; overflow: auto; padding: .8rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .stream-stderr { color: #c43232; }
+  .stream-system { color: var(--sl-color-gray-2, #555); }
+  .note { margin-bottom: 0; line-height: 1.5; }
+  @media (max-width: 600px) { .intro { flex-direction: column; } .standard { align-self: flex-start; } .source { min-height: 15rem; } }
+</style>

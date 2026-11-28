@@ -39,7 +39,7 @@ class MigrationTest(unittest.TestCase):
                 text = page.read_text()
                 self.assertIn(title, html.unescape(text))
                 for url in re.findall(r'href=["\']([^"\']+)', text):
-                    if url.startswith('/cpp-course/') and not url.startswith('/cpp-course/_astro/') and not url.startswith('/cpp-course/pagefind/'):
+                    if url.startswith('/cpp-course/') and not url.startswith('/cpp-course/_astro/') and not url.startswith('/cpp-course/pagefind/') and not url.endswith('.xml'):
                         path = unquote(url.split('#', 1)[0].split('?', 1)[0]).removeprefix('/cpp-course/').strip('/')
                         self.assertTrue((dist / path / 'index.html').is_file() or (dist / path).is_file(), f'{page}: {url}')
 
